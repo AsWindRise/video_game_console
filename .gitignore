@@ -1,0 +1,48 @@
+# Author: AsWindRise
+
+# Keil MDK-ARM
+MDK-ARM/DebugConfig/
+MDK-ARM/Listings/
+MDK-ARM/Objects/
+MDK-ARM/RTE/
+*.uvguix.*
+*.scvd
+*.Administrator
+*.bak
+*.dep
+*.uvopt
+*.ddk
+*.tmp
+
+# Compilation outputs
+*.axf
+*.bin
+*.hex
+*.map
+*.elf
+*.lst
+*.o
+*.d
+*.crf
+*.lnp
+*.sct
+*.htm
+
+# Build directories
+Build/
+Debug/
+Release/
+
+# IDE settings
+.vscode/
+.settings/
+.project
+.cproject
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Other
+*.log
