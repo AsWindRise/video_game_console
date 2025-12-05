@@ -1,0 +1,5 @@
+load STM32F407VGTx
+project name STM32CubeMX
+project toolchain "MDK-ARM V5"
+project path "D:\stm32Project\video_game_console\02demo\console\console\MDK-ARM\STM32CubeMX\console"
+SetCopyLibrary "copy only"

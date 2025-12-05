@@ -1,32 +1,38 @@
 #include "system_assembly.h"
 
 // -----------------------------------------------------------------------------
-// ÏµÍ³³õÊ¼»¯ºÍÈÎÎñ×¢²áº¯ÊıÊµÏÖ (×°ÅäÂß¼­)
+// ç³»ç»Ÿåˆå§‹åŒ–å’Œä»»åŠ¡æ³¨å†Œå‡½æ•°å®ç° (è£…é…é€»è¾‘)
 // -----------------------------------------------------------------------------
 unsigned int time;
 /**
- * @brief ÏµÍ³µÄÖ÷Òª³õÊ¼»¯º¯Êı¡£
+ * @brief ç³»ç»Ÿçš„ä¸»è¦åˆå§‹åŒ–å‡½æ•°ã€‚
  */
 void system_assembly_init(void)
 {
-    // ... ³õÊ¼»¯µ÷ÓÃ±£³Ö²»±ä ...
-    scheduler_init(); 
-		ebtn_driver_init();
-		// ¡¾×¢²áÊÂ¼ş»Øµ÷¡¿ 
-    // ÕâÊÇ½« ebtn ÊÂ¼ş×ª·¢µ½ÄúµÄ´òÓ¡º¯Êı app_key_event_handler µÄ¹Ø¼ü£¡
-    ebtn_driver_register_callback(app_key_event_handler);
-    // ...
+	// ç³»ç»Ÿå„ç»„ä»¶åˆå§‹åŒ–
+	scheduler_init();
+	ebtn_driver_init();
+	event_queue_init();
+	rocker_adc_driver_init();
+	test_rocker_adc_init();
+
+	// åˆå§‹åŒ–u8g2æ˜¾ç¤ºç»„ä»¶
+	u8g2_component_init();
+
+	// åˆå§‹åŒ–u8g2æµ‹è¯•
+	test_u8g2_init();
 }
 
 /**
- * @brief Ó¦ÓÃÈÎÎñ×¢²áº¯Êı¡£
- * Ö°Ôğ£º½«ËùÓĞÓ¦ÓÃ²ãÈÎÎñ×¢²áµ½µ÷¶ÈÆ÷ÖĞ¡£
+ * @brief åº”ç”¨ä»»åŠ¡æ³¨å†Œå‡½æ•°ã€‚
+ * èŒè´£ï¼šå°†æ‰€æœ‰åº”ç”¨å±‚ä»»åŠ¡æ³¨å†Œåˆ°è°ƒåº¦å™¨ä¸­ã€‚
  */
 void system_assembly_register_tasks(void)
 {
-		scheduler_add_task(test_task, 10);
-		scheduler_add_task(ebtn_process_task, 10);
-		scheduler_add_task(sys_monitor_task, 500);
+	scheduler_add_task(test_task, 10);
+	scheduler_add_task(ebtn_process_task, 10);
+	scheduler_add_task(sys_monitor_task, 10);
+	scheduler_add_task(test_u8g2_task, 50);
 }
 
 void test_task(void)
@@ -34,4 +40,3 @@ void test_task(void)
 	key_task();
 	time++;
 }
-

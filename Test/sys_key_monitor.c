@@ -1,84 +1,125 @@
 #include "sys_key_monitor.h"
+#include "uart_driver.h"
+#include "event_queue.h" // <-- å¼•å…¥å…¨å±€äº‹ä»¶é˜Ÿåˆ—æŽ¥å£
+#include "rocker.h"      // <-- å¼•å…¥æ‘‡æ†SOURCE_IDå®šä¹‰ï¼Œç”¨äºŽäº‹ä»¶è¿‡æ»¤
 
 // -----------------------------------------------------------------------------
-// 1. È«¾Ö±äÁ¿¶¨Òå
+// 1. å…¨å±€å˜é‡å®šä¹‰
 // -----------------------------------------------------------------------------
 
 /**
- * @brief È«¾ÖÊÂ¼þ¼ÆÊýÆ÷¶¨Òå¡£
+ * @brief å…¨å±€äº‹ä»¶è®¡æ•°å™¨å˜é‡
  */
 uint32_t g_event_count = 0;
 
-
 // -----------------------------------------------------------------------------
-// 2. µ÷ÊÔ¸¨Öúº¯Êý (ÓÃÓÚ´òÓ¡)
+// 2. è¾…åŠ©å‡½æ•°å®šä¹‰ (ç”¨äºŽæ‰“å°)
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ½«°´¼ü ID ×ª»»Îª¿É¶ÁµÄ×Ö·û´®¡£
+ * @brief å°†æŒ‰é”® ID è½¬æ¢ä¸ºå¯è¯»çš„å­—ç¬¦ä¸²
  */
-static const char* get_key_name(uint16_t key_id)
+static const char *get_key_name(uint16_t key_id)
 {
-    // Ê¹ÓÃ ebtn_driver.h ÖÐ¶¨ÒåµÄ°´¼ü ID
+    // ä½¿ç”¨ ebtn_driver.h ä¸­å®šä¹‰çš„æŒ‰é”® ID
     switch (key_id)
     {
-        case BTN_SW1: return "BTN_SW1";
-        case BTN_SW2: return "BTN_SW2";
-        case BTN_SW3: return "BTN_SW3";
-        case BTN_SW4: return "BTN_SW4";
-        case BTN_SK:  return "BTN_SK";
-        case BTN_COMBO_0: return "COMBO_SW1+SW2";
-        case BTN_COMBO_1: return "COMBO_SW1+SW3";
-        case BTN_COMBO_2: return "COMBO_SW2+SW3";
-        default: return "UNKNOWN_KEY";
+    case BTN_SW1:
+        return "BTN_SW1";
+    case BTN_SW2:
+        return "BTN_SW2";
+    case BTN_SW3:
+        return "BTN_SW3";
+    case BTN_SW4:
+        return "BTN_SW4";
+    case BTN_SK:
+        return "BTN_SK";
+    case BTN_COMBO_0:
+        return "COMBO_SW1+SW2";
+    case BTN_COMBO_1:
+        return "COMBO_SW1+SW3";
+    case BTN_COMBO_2:
+        return "COMBO_SW2+SW3";
+    default:
+        return "UNKNOWN_KEY";
     }
 }
 
 /**
- * @brief ½«ÊÂ¼þÀàÐÍ×ª»»Îª¿É¶ÁµÄ×Ö·û´®¡£
+ * @brief å°†æŒ‰é”®äº‹ä»¶ç±»åž‹è½¬æ¢ä¸ºå¯è¯»çš„å­—ç¬¦ä¸²
  */
-static const char* get_event_name(ebtn_evt_t evt)
+static const char *get_event_name(ebtn_evt_t evt)
 {
     switch (evt)
     {
-        case EBTN_EVT_ONPRESS:    return "ONPRESS";
-        case EBTN_EVT_ONRELEASE:  return "ONRELEASE";
-        case EBTN_EVT_ONCLICK:    return "ONCLICK";
-        case EBTN_EVT_KEEPALIVE:  return "KEEPALIVE";
-        default: return "OTHER_EVENT";
+    case EBTN_EVT_ONPRESS:
+        return "ONPRESS";
+    case EBTN_EVT_ONRELEASE:
+        return "ONRELEASE";
+    case EBTN_EVT_ONCLICK:
+        return "ONCLICK";
+    case EBTN_EVT_KEEPALIVE:
+        return "KEEPALIVE";
+    default:
+        return "OTHER_EVENT";
     }
 }
 
-
 // -----------------------------------------------------------------------------
-// 3. µ÷ÊÔÈÎÎñÊµÏÖ
+// 3. ä»»åŠ¡å‡½æ•°å®žçŽ°
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ÖÜÆÚÐÔÏµÍ³¼à¿ØÈÎÎñ¡£
- * Ö°Ôð£º¼ì²éÏµÍ³ÊÇ·ñ´æ»î£¬²¢´òÓ¡ÊÂ¼þ½ÓÊÕ×´Ì¬¡£
+ * @brief ç›‘æŽ§ç³»ç»Ÿäº‹ä»¶å¤„ç†
+ * èŒè´£ï¼šç›‘æŽ§ç³»ç»ŸæŒ‰é”®äº‹ä»¶ï¼Œé‡åˆ°æ‘‡æ†äº‹ä»¶åˆ™æ”¾å›žé˜Ÿåˆ—ç•™ç»™ä¸“ç”¨å¤„ç†ä»»åŠ¡
+ *
+ * âš ï¸ é‡è¦ï¼šæœ¬ä»»åŠ¡åªå¤„ç†æŒ‰é”®äº‹ä»¶ï¼ˆsource_id < 0x0100ï¼‰
+ *          æ‘‡æ†äº‹ä»¶ï¼ˆsource_id = ROCKER_SOURCE_IDï¼‰ä¼šè¢«æ”¾å›žé˜Ÿåˆ—
  */
 void sys_monitor_task(void)
 {
-    // Ã¿ 500ms ´òÓ¡Ò»´ÎÐÄÌøºÍÊÂ¼þ½ÓÊÕ×´Ì¬
-    // *** Ê¹ÓÃÓÃ»§Ö¸¶¨µÄµ÷ÊÔ¾ä±ú &huart1 ***
-    my_printf(&huart1, "[SYS] Heartbeat. Total events: %lu\r\n", g_event_count);
+    // 1. æ‰“å°å¿ƒè·³ (ä½Žé¢‘)
+    //    my_printf(&huart1, "[SYS] Heartbeat. Total events PUSHED: %lu\r\n", g_event_count);
+
+    // 2. äº‹ä»¶é˜Ÿåˆ—å¾ªçŽ¯ (é«˜é¢‘/è½®è¯¢)
+    app_event_t received_event;
+
+    // åªè¦é˜Ÿåˆ—ä¸ä¸ºç©ºï¼Œå°±ä¸æ–­åœ°å¼¹å‡ºäº‹ä»¶ (è¿™æ˜¯è½®è¯¢æ–¹å¼)
+    while (event_queue_pop(&received_event))
+    {
+        // ========== è‰¹ï¼å…³é”®ä¿®æ”¹ï¼šè¿‡æ»¤æ‘‡æ†äº‹ä»¶ ==========
+        // å¦‚æžœæ˜¯æ‘‡æ†äº‹ä»¶ï¼Œæ”¾å›žé˜Ÿåˆ—ï¼Œç•™ç»™ rocker_event_handler_task å¤„ç†
+        if (received_event.source_id == ROCKER_SOURCE_ID)
+        {
+            event_queue_push(received_event); // é‡æ–°æ”¾å›žé˜Ÿåˆ—
+            break;                            // åœæ­¢ç»§ç»­popï¼Œé¿å…æ­»å¾ªçŽ¯
+        }
+
+        // ========== åªå¤„ç†æŒ‰é”®äº‹ä»¶ ==========
+        my_printf(&huart1,
+                  "[EQ_TEST] Key: %s, Event: %s, Data: %lu\r\n",
+                  get_key_name(received_event.source_id),
+                  get_event_name((ebtn_evt_t)received_event.event_type),
+                  received_event.data);
+    }
 }
 
 /**
- * @brief ÁÙÊ±µÄ°´¼üÊÂ¼þ´¦Àíº¯Êý (ebtn »Øµ÷)¡£
- * Ö°Ôð£º½ÓÊÕÀ´×Ô ebtn_driver µÄÊÂ¼þ£¬ÓÃÓÚÑéÖ¤ÒÆÖ²ÊÇ·ñ³É¹¦¡£
+ * @brief è¿‡æ—¶çš„æŒ‰é”®äº‹ä»¶å›žè°ƒå‡½æ•° (ebtn å›žè°ƒ)
+ * èŒè´£ï¼šä¸å†æ‰“å°ï¼Œè€Œæ˜¯å°†äº‹ä»¶æŽ¨é€åˆ° Event Queue
  */
 void app_key_event_handler(uint16_t key_id, ebtn_evt_t evt)
 {
-    // Ôö¼ÓÊÂ¼þ¼ÆÊý
-    g_event_count++; 
-    
-    // ´òÓ¡ÏêÏ¸µÄÊÂ¼þÐÅÏ¢
-    // *** Ê¹ÓÃÓÃ»§Ö¸¶¨µÄµ÷ÊÔ¾ä±ú &huart1 ***
-    my_printf(&huart1, 
-              "[EBTN_VERIFY] #%lu - Key: %s, Event: %s\r\n", 
-              g_event_count, 
-              get_key_name(key_id), 
-              get_event_name(evt));
+    g_event_count++;
+
+    // 1. æž„é€ äº‹ä»¶
+    app_event_t new_event;
+    new_event.source_id = key_id;
+    new_event.event_type = (uint8_t)evt;
+    new_event.data = 0;
+
+    // 2. æŽ¨é€åˆ° Event Queue
+    event_queue_push(new_event);
+
+    // æ³¨æ„ï¼šæˆ‘ä»¬ç§»é™¤äº†åŽŸæœ‰çš„æ‰“å°ï¼Œå› ä¸ºç»Ÿä¸€æ‰“å°æ”¾åœ¨ sys_monitor_task ä¸­
 }

@@ -4,6 +4,7 @@
 // 引入全局配置头文件和核心库
 #include "mydefine.h"
 #include "ebtn.h" // 引用核心库 API (需要 ebtn_evt_t, ebtn_btn_t 等类型)
+#include  "event_queue.h"// 引用组件库event_queue的API
 
 // -----------------------------------------------------------------------------
 // 1. 按键 ID 定义
@@ -32,20 +33,7 @@ typedef enum
 
 
 // -----------------------------------------------------------------------------
-// 2. 应用层事件处理类型定义 (解耦连接器)
-// -----------------------------------------------------------------------------
-
-/**
- * @brief 应用层事件回调函数原型。
- * 职责：接收 ebtn 驱动转发的按键事件，由应用层处理业务逻辑。
- * * @param key_id: 触发事件的按键 ID (button_id_t)。
- * @param evt: 触发的事件类型 (EBTN_EVT_ONCLICK, EBTN_EVT_KEEPALIVE, 等)。
- */
-typedef void (*ebtn_app_evt_fn)(uint16_t key_id, ebtn_evt_t evt);
-
-
-// -----------------------------------------------------------------------------
-// 3. 驱动 API 声明
+// 2. 驱动 API 声明
 // -----------------------------------------------------------------------------
 
 /**
@@ -59,13 +47,5 @@ void ebtn_driver_init(void);
  * 职责：由调度器中周期性运行 (如 10ms)，驱动 ebtn 状态机。
  */
 void ebtn_process_task(void);
-
-/**
- * @brief 注册应用层的按键事件回调函数。
- * 职责：提供一个连接点，将事件处理权交给应用层。
- * * @param callback_fn: 应用层提供的事件处理函数指针。
- */
-void ebtn_driver_register_callback(ebtn_app_evt_fn callback_fn); 
-
 
 #endif // __EBTN_DRIVER_H__

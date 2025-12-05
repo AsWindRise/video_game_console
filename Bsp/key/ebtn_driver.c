@@ -5,9 +5,6 @@
 // 0. 内部函数声明与全局变量
 // -----------------------------------------------------------------------------
 
-// 全局函数指针：存储应用层注册的回调函数 (事件转发的连接点)。
-static ebtn_app_evt_fn app_event_handler = NULL;
-
 // 内部函数声明
 static int btn_combos_init(void); 
 static uint8_t prv_get_state_callback(struct ebtn_btn *btn);
@@ -83,14 +80,28 @@ static uint8_t prv_get_state_callback(struct ebtn_btn *btn)
 
 /**
  * @brief 按钮事件回调函数 (事件转发)。
- * 职责：将 ebtn 核心事件转发给应用层注册的函数。
+ * 职责：将 ebtn 核心事件打包为 app_event_t，并推入 Event Queue。
  */
 static void prv_btn_event_callback(struct ebtn_btn *btn, ebtn_evt_t evt)
 {
-    if (app_event_handler != NULL)
-    {
-        app_event_handler(btn->key_id, evt);
-    }
+	// 1. 打包事件 (Pack the Event)
+    
+    // 声明事件结构体变量。注意：使用 static 关键字需要考虑并发安全。
+	auto app_event_t ebtn_event_t; 
+
+    // 将按键 ID (事件来源) 存入事件结构体
+	ebtn_event_t.source_id = btn->key_id;
+
+    // 将事件类型存入事件结构体 (需要显式类型转换，确保类型匹配 uint8_t)
+	ebtn_event_t.event_type = (uint8_t)evt; 
+
+    // 附加数据字段 (暂时设为 0，未来用于连击数或摇杆值)
+	if (evt == EBTN_EVT_ONCLICK) { ebtn_event_t.data = (uint32_t)btn->click_cnt; } else { ebtn_event_t.data = 0; }
+
+    // 2. 推入队列 (Push to Channel)
+    
+    // 将打包好的事件发送到队列，完成事件从驱动层到组件层的转发。
+	event_queue_push(ebtn_event_t); 
 }
 
 
@@ -132,14 +143,6 @@ static int btn_combos_init()
 // -----------------------------------------------------------------------------
 // 4. 驱动 API 实现
 // -----------------------------------------------------------------------------
-
-/**
- * @brief 注册应用层的按键事件回调函数。
- */
-void ebtn_driver_register_callback(ebtn_app_evt_fn callback_fn)
-{
-    app_event_handler = callback_fn;
-}
 
 /**
  * @brief ebtn 驱动初始化函数。

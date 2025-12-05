@@ -1,0 +1,13 @@
+build-gen-idx:
+  generated-by: uVision version 5.41.0.0
+  generators:
+    - board: ""
+      device: STM32F407VGTx
+      id: CubeMX
+      output: D:/stm32Project/video_game_console/02demo/console/console/MDK-ARM/STM32CubeMX/console/
+      project-type: single-core
+      cbuild-gens:
+        - cbuild-gen: D:/stm32Project/video_game_console/02demo/console/console/MDK-ARM/console.console.cbuild-gen.yml
+          configuration: .console
+          name: D:/stm32Project/video_game_console/02demo/console/console/MDK-ARM/STM32CubeMX/console/console.cgen.yml
+          project: console
