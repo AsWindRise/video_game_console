@@ -1,0 +1,140 @@
+FLOWCHART DESCRIPTION FOR EXPERIMENT 1
+
+==================================================
+MAIN PROGRAM FLOWCHART
+==================================================
+
+[START - Oval Shape]
+    ↓
+[Initialize DS Register] - Rectangle
+"MOV AX, DATAS"
+"MOV DS, AX"
+    ↓
+[Display Input Prompt] - Rectangle
+"Display: Please input a number (0-9)"
+    ↓
+[Read Keyboard Input] - Rectangle
+"Read one character from keyboard"
+"Store in AL register"
+    ↓
+[Convert ASCII to Numeric Value] - Rectangle
+"SUB AL, '0'"
+"MOV BUF, AL"
+    ↓
+[Calculate X × 2] - Rectangle
+"Load BUF to AL"
+"SHL AL, 1"
+    ↓
+[Call Print Subroutine] - Rectangle
+"CALL PRINT_AL_DECIMAL"
+    ↓
+[Calculate X × 4] - Rectangle
+"Load BUF to AL"
+"SHL AL, 1 (1st time)"
+"SHL AL, 1 (2nd time)"
+    ↓
+[Call Print Subroutine] - Rectangle
+"CALL PRINT_AL_DECIMAL"
+    ↓
+[Calculate X × 10] - Rectangle
+"Load BUF to AL and BL"
+"SHL AL, 1 (3 times) → AL = X×8"
+"SHL BL, 1 (1 time) → BL = X×2"
+"ADD AL, BL → AL = X×10"
+    ↓
+[Call Print Subroutine] - Rectangle
+"CALL PRINT_AL_DECIMAL"
+    ↓
+[Exit Program] - Rectangle
+"INT 21H (AH=4CH)"
+    ↓
+[END - Oval Shape]
+
+
+==================================================
+SUBROUTINE PRINT_AL_DECIMAL FLOWCHART
+==================================================
+
+[START - Oval Shape]
+"Subroutine Entry"
+    ↓
+[Save Registers] - Rectangle
+"PUSH AX, BX, DX"
+    ↓
+[Clear AH Register] - Rectangle
+"MOV AH, 0"
+    ↓
+[Divide by 10] - Rectangle
+"DIV BL"
+"AL = Quotient (tens digit)"
+"AH = Remainder (ones digit)"
+    ↓
+[Convert to ASCII] - Rectangle
+"ADD AL, '0'"
+"ADD AH, '0'"
+    ↓
+[Print Tens Digit] - Rectangle
+"MOV DL, AL"
+"INT 21H (AH=2)"
+    ↓
+[Print Ones Digit] - Rectangle
+"MOV DL, AH"
+"INT 21H (AH=2)"
+    ↓
+[Restore Registers] - Rectangle
+"POP DX, BX, AX"
+    ↓
+[RETURN - Oval Shape]
+"RET"
+
+
+==================================================
+INSTRUCTIONS FOR AI IMAGE GENERATION:
+==================================================
+
+1. Create two separate flowcharts side by side or one above the other
+2. Use standard flowchart symbols:
+   - Oval shapes for START and END nodes
+   - Rectangle shapes for process steps
+   - Arrows connecting all nodes from top to bottom
+3. Include all text descriptions inside each shape
+4. Use clear, readable font size
+5. Add proper spacing between nodes
+6. Main program flowchart on the left, subroutine flowchart on the right
+7. Use blue color for main program, green color for subroutine (optional)
+8. Make sure all arrows point in the correct direction (top to bottom)
+
+
+==================================================
+SIMPLIFIED PROMPT FOR GEMINI:
+==================================================
+
+"Please create two flowcharts based on the following descriptions:
+
+FLOWCHART 1 - Main Program:
+- Start (oval)
+- Initialize DS Register (rectangle)
+- Display Input Prompt (rectangle)
+- Read Keyboard Input (rectangle)
+- Convert ASCII to Numeric (rectangle)
+- Calculate X×2 with SHL AL, 1 (rectangle)
+- Call Print Subroutine (rectangle)
+- Calculate X×4 with SHL AL, 1 twice (rectangle)
+- Call Print Subroutine (rectangle)
+- Calculate X×10: X×8 + X×2 (rectangle)
+- Call Print Subroutine (rectangle)
+- Exit Program (rectangle)
+- End (oval)
+
+FLOWCHART 2 - Print Subroutine:
+- Start (oval)
+- Save Registers (rectangle)
+- Clear AH (rectangle)
+- Divide by 10 (rectangle)
+- Convert to ASCII (rectangle)
+- Print Tens Digit (rectangle)
+- Print Ones Digit (rectangle)
+- Restore Registers (rectangle)
+- Return (oval)
+
+Connect all boxes with downward arrows. Use standard flowchart notation."

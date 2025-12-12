@@ -12,8 +12,8 @@
 // 1. 宏定义
 // -----------------------------------------------------------------------------
 
-/** 默认死区半径（原始ADC值，0-4095） */
-#define ROCKER_DEFAULT_DEADZONE 100
+/** 默认死区半径（原始ADC值，0-4095）- 增大防止ADC噪声误触发 */
+#define ROCKER_DEFAULT_DEADZONE 500
 
 /** 默认滤波采样数（1 = 不滤波） */
 #define ROCKER_DEFAULT_FILTER_SIZE 4

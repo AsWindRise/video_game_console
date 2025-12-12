@@ -1,7 +1,6 @@
 #ifndef __SYSTEM_ASSEMBLY_H__
 #define __SYSTEM_ASSEMBLY_H__
 
-// 包含全局头文件，确保具备标准类型和调度器 API 等依赖
 #include "mydefine.h"
 
 /**
@@ -15,5 +14,5 @@ void system_assembly_init(void);
  * 职责：将所有应用层任务注册到调度器中。
  */
 void system_assembly_register_tasks(void);
-void test_task(void);
+
 #endif // __SYSTEM_ASSEMBLY_H__

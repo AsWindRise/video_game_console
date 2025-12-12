@@ -1,63 +1,61 @@
 #include "ebtn_driver.h"
-#include "gpio.h" 
+#include "gpio.h"
 
 // -----------------------------------------------------------------------------
-// 0. ÄÚ²¿º¯ÊıÉùÃ÷ÓëÈ«¾Ö±äÁ¿
+// 0. å†…éƒ¨å‡½æ•°å£°æ˜ä¸å…¨å±€å˜é‡
 // -----------------------------------------------------------------------------
 
-// ÄÚ²¿º¯ÊıÉùÃ÷
-static int btn_combos_init(void); 
+// å†…éƒ¨å‡½æ•°å£°æ˜
+static int btn_combos_init(void);
 static uint8_t prv_get_state_callback(struct ebtn_btn *btn);
 static void prv_btn_event_callback(struct ebtn_btn *btn, ebtn_evt_t evt);
 
-
 // -----------------------------------------------------------------------------
-// 1. ¾²Ì¬²ÎÊıÓë°´¼üÁĞ±í
+// 1. é™æ€å‚æ•°ä¸æŒ‰é”®åˆ—è¡¨
 // -----------------------------------------------------------------------------
 
 /**
- * @brief Ä¬ÈÏ°´¼ü²ÎÊıÅäÖÃÊµÀı¡£
- * ËùÓĞµÄ¾²Ì¬°´¼ü¶¼½«Ê¹ÓÃ´ËÅäÖÃ¡£
+ * @brief é»˜è®¤æŒ‰é”®å‚æ•°é…ç½®å®ä¾‹ã€‚
+ * æ‰€æœ‰çš„é™æ€æŒ‰é”®éƒ½å°†ä½¿ç”¨æ­¤é…ç½®ã€‚
  */
-// ²ÎÊıºê: EBTN_PARAMS_INIT(°´ÏÂÏû¶¶, ÊÍ·ÅÏû¶¶, µ¥»÷×î¶Ì°´ÏÂ, µ¥»÷×î³¤°´ÏÂ, ¶à´Îµ¥»÷×î´ó¼ä¸ô, ³¤°´ÖÜÆÚ, ×î´óÁ¬»÷Êı)
+// å‚æ•°å®: EBTN_PARAMS_INIT(æŒ‰ä¸‹æ¶ˆæŠ–, é‡Šæ”¾æ¶ˆæŠ–, å•å‡»æœ€çŸ­æŒ‰ä¸‹, å•å‡»æœ€é•¿æŒ‰ä¸‹, å¤šæ¬¡å•å‡»æœ€å¤§é—´éš”, é•¿æŒ‰å‘¨æœŸ, æœ€å¤§è¿å‡»æ•°)
 const ebtn_btn_param_t default_ebtn_param = EBTN_PARAMS_INIT(
-    20,  // time_debounce: °´ÏÂÎÈ¶¨ 20ms (È¥¶¶Ê±¼ä)
-    20,  // time_debounce_release: ÊÍ·ÅÎÈ¶¨ 20ms (ÊÍ·ÅÈ¥¶¶Ê±¼ä)
-    50,  // time_click_pressed_min: ÓĞĞ§µ¥»÷×î¶Ì°´ÏÂÊ±¼ä
-    500, // time_click_pressed_max: ÓĞĞ§µ¥»÷×î³¤°´ÏÂÊ±¼ä (³¬¹ıÔòÊÓÎª³¤°´»òÎŞĞ§)
-    300, // time_click_multi_max: ¶à´Îµ¥»÷Ö®¼äµÄ×î´ó¼ä¸ôÊ±¼ä
-    500, // time_keepalive_period: ³¤°´ÊÂ¼şµÄÖÜÆÚ (Ã¿ 500ms ´¥·¢Ò»´Î KEEPALIVE)
-    5    // max_consecutive: ×î´óÁ¬Ğøµã»÷´ÎÊı
+    20,  // time_debounce: æŒ‰ä¸‹ç¨³å®š 20ms (å»æŠ–æ—¶é—´)
+    20,  // time_debounce_release: é‡Šæ”¾ç¨³å®š 20ms (é‡Šæ”¾å»æŠ–æ—¶é—´)
+    50,  // time_click_pressed_min: æœ‰æ•ˆå•å‡»æœ€çŸ­æŒ‰ä¸‹æ—¶é—´
+    500, // time_click_pressed_max: æœ‰æ•ˆå•å‡»æœ€é•¿æŒ‰ä¸‹æ—¶é—´ (è¶…è¿‡åˆ™è§†ä¸ºé•¿æŒ‰æˆ–æ— æ•ˆ)
+    300, // time_click_multi_max: å¤šæ¬¡å•å‡»ä¹‹é—´çš„æœ€å¤§é—´éš”æ—¶é—´
+    500, // time_keepalive_period: é•¿æŒ‰äº‹ä»¶çš„å‘¨æœŸ (æ¯ 500ms è§¦å‘ä¸€æ¬¡ KEEPALIVE)
+    5    // max_consecutive: æœ€å¤§è¿ç»­ç‚¹å‡»æ¬¡æ•°
 );
 
 /**
- * @brief ¾²Ì¬¶ÀÁ¢°´¼üÁĞ±í¡£
+ * @brief é™æ€ç‹¬ç«‹æŒ‰é”®åˆ—è¡¨ã€‚
  */
 static ebtn_btn_t btns[] = {
-    EBTN_BUTTON_INIT(BTN_SW1, &default_ebtn_param), 
-    EBTN_BUTTON_INIT(BTN_SW2, &default_ebtn_param), 
-    EBTN_BUTTON_INIT(BTN_SW3, &default_ebtn_param), 
-    EBTN_BUTTON_INIT(BTN_SW4, &default_ebtn_param), 
-    EBTN_BUTTON_INIT(BTN_SK, &default_ebtn_param),  
+    EBTN_BUTTON_INIT(BTN_SW1, &default_ebtn_param),
+    EBTN_BUTTON_INIT(BTN_SW2, &default_ebtn_param),
+    EBTN_BUTTON_INIT(BTN_SW3, &default_ebtn_param),
+    EBTN_BUTTON_INIT(BTN_SW4, &default_ebtn_param),
+    EBTN_BUTTON_INIT(BTN_SK, &default_ebtn_param),
 };
 
 /**
- * @brief ¾²Ì¬×éºÏ°´¼üÁĞ±í¡£
+ * @brief é™æ€ç»„åˆæŒ‰é”®åˆ—è¡¨ã€‚
  */
 ebtn_btn_combo_t btn_combos[] = {
-    EBTN_BUTTON_COMBO_INIT(BTN_COMBO_0, &default_ebtn_param), 
+    EBTN_BUTTON_COMBO_INIT(BTN_COMBO_0, &default_ebtn_param),
     EBTN_BUTTON_COMBO_INIT(BTN_COMBO_1, &default_ebtn_param),
     EBTN_BUTTON_COMBO_INIT(BTN_COMBO_2, &default_ebtn_param),
 };
 
-
 // -----------------------------------------------------------------------------
-// 2. µ×²ãÇı¶¯Á¬½Ó»Øµ÷ÊµÏÖ
+// 2. åº•å±‚é©±åŠ¨è¿æ¥å›è°ƒå®ç°
 // -----------------------------------------------------------------------------
 
 /**
- * @brief HAL ×´Ì¬»ñÈ¡»Øµ÷º¯Êı (¹© ebtn ¿âµ÷ÓÃ)¡£
- * @return 1 Îª°´ÏÂ (µÍµçÆ½»î¶¯)£¬0 ÎªÊÍ·Å¡£
+ * @brief HAL çŠ¶æ€è·å–å›è°ƒå‡½æ•° (ä¾› ebtn åº“è°ƒç”¨)ã€‚
+ * @return 1 ä¸ºæŒ‰ä¸‹ (ä½ç”µå¹³æ´»åŠ¨)ï¼Œ0 ä¸ºé‡Šæ”¾ã€‚
  */
 static uint8_t prv_get_state_callback(struct ebtn_btn *btn)
 {
@@ -79,94 +77,98 @@ static uint8_t prv_get_state_callback(struct ebtn_btn *btn)
 }
 
 /**
- * @brief °´Å¥ÊÂ¼ş»Øµ÷º¯Êı (ÊÂ¼ş×ª·¢)¡£
- * Ö°Ôğ£º½« ebtn ºËĞÄÊÂ¼ş´ò°üÎª app_event_t£¬²¢ÍÆÈë Event Queue¡£
+ * @brief æŒ‰é’®äº‹ä»¶å›è°ƒå‡½æ•° (äº‹ä»¶è½¬å‘)ã€‚
+ * èŒè´£ï¼šå°† ebtn æ ¸å¿ƒäº‹ä»¶æ‰“åŒ…ä¸º app_event_tï¼Œå¹¶æ¨å…¥ Event Queueã€‚
  */
 static void prv_btn_event_callback(struct ebtn_btn *btn, ebtn_evt_t evt)
 {
-	// 1. ´ò°üÊÂ¼ş (Pack the Event)
-    
-    // ÉùÃ÷ÊÂ¼ş½á¹¹Ìå±äÁ¿¡£×¢Òâ£ºÊ¹ÓÃ static ¹Ø¼ü×ÖĞèÒª¿¼ÂÇ²¢·¢°²È«¡£
-	auto app_event_t ebtn_event_t; 
+    // 1. æ‰“åŒ…äº‹ä»¶ (Pack the Event)
 
-    // ½«°´¼ü ID (ÊÂ¼şÀ´Ô´) ´æÈëÊÂ¼ş½á¹¹Ìå
-	ebtn_event_t.source_id = btn->key_id;
+    // å£°æ˜äº‹ä»¶ç»“æ„ä½“å˜é‡ã€‚æ³¨æ„ï¼šä½¿ç”¨ static å…³é”®å­—éœ€è¦è€ƒè™‘å¹¶å‘å®‰å…¨ã€‚
+    auto app_event_t ebtn_event_t;
 
-    // ½«ÊÂ¼şÀàĞÍ´æÈëÊÂ¼ş½á¹¹Ìå (ĞèÒªÏÔÊ½ÀàĞÍ×ª»»£¬È·±£ÀàĞÍÆ¥Åä uint8_t)
-	ebtn_event_t.event_type = (uint8_t)evt; 
+    // å°†æŒ‰é”® ID (äº‹ä»¶æ¥æº) å­˜å…¥äº‹ä»¶ç»“æ„ä½“
+    ebtn_event_t.source_id = btn->key_id;
 
-    // ¸½¼ÓÊı¾İ×Ö¶Î (ÔİÊ±ÉèÎª 0£¬Î´À´ÓÃÓÚÁ¬»÷Êı»òÒ¡¸ËÖµ)
-	if (evt == EBTN_EVT_ONCLICK) { ebtn_event_t.data = (uint32_t)btn->click_cnt; } else { ebtn_event_t.data = 0; }
+    // å°†äº‹ä»¶ç±»å‹å­˜å…¥äº‹ä»¶ç»“æ„ä½“ (éœ€è¦æ˜¾å¼ç±»å‹è½¬æ¢ï¼Œç¡®ä¿ç±»å‹åŒ¹é… uint8_t)
+    ebtn_event_t.event_type = (uint8_t)evt;
 
-    // 2. ÍÆÈë¶ÓÁĞ (Push to Channel)
-    
-    // ½«´ò°üºÃµÄÊÂ¼ş·¢ËÍµ½¶ÓÁĞ£¬Íê³ÉÊÂ¼ş´ÓÇı¶¯²ãµ½×é¼ş²ãµÄ×ª·¢¡£
-	event_queue_push(ebtn_event_t); 
+    // é™„åŠ æ•°æ®å­—æ®µ (æš‚æ—¶è®¾ä¸º 0ï¼Œæœªæ¥ç”¨äºè¿å‡»æ•°æˆ–æ‘‡æ†å€¼)
+    if (evt == EBTN_EVT_ONCLICK)
+    {
+        ebtn_event_t.data = (uint32_t)btn->click_cnt;
+    }
+    else
+    {
+        ebtn_event_t.data = 0;
+    }
+
+    // 2. æ¨å…¥é˜Ÿåˆ— (Push to Channel)
+
+    // å°†æ‰“åŒ…å¥½çš„äº‹ä»¶å‘é€åˆ°é˜Ÿåˆ—ï¼Œå®Œæˆäº‹ä»¶ä»é©±åŠ¨å±‚åˆ°ç»„ä»¶å±‚çš„è½¬å‘ã€‚
+    event_queue_push(ebtn_event_t);
 }
 
-
 // -----------------------------------------------------------------------------
-// 3. ×éºÏ¼ü°ó¶¨ÊµÏÖ
+// 3. ç»„åˆé”®ç»‘å®šå®ç°
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ×éºÏ°´¼ü°ó¶¨³õÊ¼»¯¡£
+ * @brief ç»„åˆæŒ‰é”®ç»‘å®šåˆå§‹åŒ–ã€‚
  */
 static int btn_combos_init()
 {
-    int key1_index = ebtn_get_btn_index_by_key_id(BTN_SW1); 
-    int key2_index = ebtn_get_btn_index_by_key_id(BTN_SW2); 
-    int key3_index = ebtn_get_btn_index_by_key_id(BTN_SW3); 
-    
+    int key1_index = ebtn_get_btn_index_by_key_id(BTN_SW1);
+    int key2_index = ebtn_get_btn_index_by_key_id(BTN_SW2);
+    int key3_index = ebtn_get_btn_index_by_key_id(BTN_SW3);
+
     // BTN_COMBO_0: BTN_SW1 + BTN_SW2
     if (key1_index >= 0 && key2_index >= 0)
     {
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[0], key1_index); 
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[0], key2_index); 
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[0], key1_index);
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[0], key2_index);
     }
     // BTN_COMBO_1: BTN_SW1 + BTN_SW3
     if (key1_index >= 0 && key3_index >= 0)
     {
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[1], key1_index); 
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[1], key3_index); 
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[1], key1_index);
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[1], key3_index);
     }
     // BTN_COMBO_2: BTN_SW2 + BTN_SW3
     if (key2_index >= 0 && key3_index >= 0)
     {
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[2], key2_index); 
-        ebtn_combo_btn_add_btn_by_idx(&btn_combos[2], key3_index); 
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[2], key2_index);
+        ebtn_combo_btn_add_btn_by_idx(&btn_combos[2], key3_index);
     }
-    return 0; 
+    return 0;
 }
 
-
 // -----------------------------------------------------------------------------
-// 4. Çı¶¯ API ÊµÏÖ
+// 4. é©±åŠ¨ API å®ç°
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ebtn Çı¶¯³õÊ¼»¯º¯Êı¡£
+ * @brief ebtn é©±åŠ¨åˆå§‹åŒ–å‡½æ•°ã€‚
  */
 void ebtn_driver_init(void)
 {
-    // 1. µ÷ÓÃºËĞÄ¿â³õÊ¼»¯
+    // 1. è°ƒç”¨æ ¸å¿ƒåº“åˆå§‹åŒ–
     ebtn_init(
-        btns, 
-        EBTN_ARRAY_SIZE(btns), 
-        btn_combos, 
-        EBTN_ARRAY_SIZE(btn_combos), 
-        prv_get_state_callback, 
-        prv_btn_event_callback
-    );
-    // 2. °ó¶¨×éºÏ¼ü
-    btn_combos_init(); 
+        btns,
+        EBTN_ARRAY_SIZE(btns),
+        btn_combos,
+        EBTN_ARRAY_SIZE(btn_combos),
+        prv_get_state_callback,
+        prv_btn_event_callback);
+    // 2. ç»‘å®šç»„åˆé”®
+    btn_combos_init();
 }
 
 /**
- * @brief ebtn ¿â´¦ÀíÈÎÎñ¡£
+ * @brief ebtn åº“å¤„ç†ä»»åŠ¡ã€‚
  */
 void ebtn_process_task(void)
 {
-    // ´«Èëµ±Ç°ºÁÃëÏµÍ³Ê±¼ä (HAL_GetTick())
-    ebtn_process(HAL_GetTick()); 
+    // ä¼ å…¥å½“å‰æ¯«ç§’ç³»ç»Ÿæ—¶é—´ (HAL_GetTick())
+    ebtn_process(HAL_GetTick());
 }

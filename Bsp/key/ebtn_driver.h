@@ -1,50 +1,49 @@
 #ifndef __EBTN_DRIVER_H__
 #define __EBTN_DRIVER_H__
 
-// ÒýÈëÈ«¾ÖÅäÖÃÍ·ÎÄ¼þºÍºËÐÄ¿â
+// å¼•å…¥å…¨å±€é…ç½®å¤´æ–‡ä»¶å’Œæ ¸å¿ƒåº“
 #include "mydefine.h"
-#include "ebtn.h" // ÒýÓÃºËÐÄ¿â API (ÐèÒª ebtn_evt_t, ebtn_btn_t µÈÀàÐÍ)
-#include  "event_queue.h"// ÒýÓÃ×é¼þ¿âevent_queueµÄAPI
+#include "ebtn.h"        // å¼•ç”¨æ ¸å¿ƒåº“ API (éœ€è¦ ebtn_evt_t, ebtn_btn_t ç­‰ç±»åž‹)
+#include "event_queue.h" // å¼•ç”¨ç»„ä»¶åº“event_queueçš„API
 
 // -----------------------------------------------------------------------------
-// 1. °´¼ü ID ¶¨Òå
+// 1. æŒ‰é”® ID å®šä¹‰
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ÎïÀí°´¼üºÍ¾²Ì¬×éºÏ°´¼üµÄÎ¨Ò»±êÊ¶·û¡£
- * * ×¢Òâ£ºID ±ØÐë±£³ÖÎ¨Ò»ÐÔ£¬×éºÏ¼ü ID ±ØÐëÓëÎïÀí°´¼ü ID ´í¿ª¡£
+ * @brief ç‰©ç†æŒ‰é”®å’Œé™æ€ç»„åˆæŒ‰é”®çš„å”¯ä¸€æ ‡è¯†ç¬¦ã€‚
+ * * æ³¨æ„ï¼šID å¿…é¡»ä¿æŒå”¯ä¸€æ€§ï¼Œç»„åˆé”® ID å¿…é¡»ä¸Žç‰©ç†æŒ‰é”® ID é”™å¼€ã€‚
  */
 typedef enum
 {
-    // ÎïÀí°´¼ü ID (Ë÷Òý 0 ¿ªÊ¼)
-    BTN_SW1 = 0,    // ¶ÔÓ¦ SW1 (PE0)
-    BTN_SW2,        // ¶ÔÓ¦ SW2 (PE1)
-    BTN_SW3,        // ¶ÔÓ¦ SW3 (PE2)
-    BTN_SW4,        // ¶ÔÓ¦ SW4 (PE3)
-    BTN_SK,         // ¶ÔÓ¦ SK_Pin (PE4)
-    BTN_MAX_COUNT,  // ×Ü¶ÀÁ¢°´¼üÊý
+    // ç‰©ç†æŒ‰é”® ID (ç´¢å¼• 0 å¼€å§‹)
+    BTN_SW1 = 0,   // å¯¹åº” SW1 (PE0)
+    BTN_SW2,       // å¯¹åº” SW2 (PE1)
+    BTN_SW3,       // å¯¹åº” SW3 (PE2)
+    BTN_SW4,       // å¯¹åº” SW4 (PE3)
+    BTN_SK,        // å¯¹åº” SK_Pin (PE4)
+    BTN_MAX_COUNT, // æ€»ç‹¬ç«‹æŒ‰é”®æ•°
 
-    // ¾²Ì¬×éºÏ°´¼ü ID (´Ó 101 ¿ªÊ¼£¬±ÜÃâÓëÎïÀí°´¼ü³åÍ»)
-    BTN_COMBO_0 = 101, // ¼ÙÉè: SW1 + SW2 ×éºÏ¼ü
-    BTN_COMBO_1,       // ¼ÙÉè: SW1 + SW3 ×éºÏ¼ü
-    BTN_COMBO_2,       // ¼ÙÉè: SW2 + SW3 ×éºÏ¼ü
-    BTN_COMBO_MAX,     // ×éºÏ°´¼ü×î´ó ID
+    // é™æ€ç»„åˆæŒ‰é”® ID (ä»Ž 101 å¼€å§‹ï¼Œé¿å…ä¸Žç‰©ç†æŒ‰é”®å†²çª)
+    BTN_COMBO_0 = 101, // å‡è®¾: SW1 + SW2 ç»„åˆé”®
+    BTN_COMBO_1,       // å‡è®¾: SW1 + SW3 ç»„åˆé”®
+    BTN_COMBO_2,       // å‡è®¾: SW2 + SW3 ç»„åˆé”®
+    BTN_COMBO_MAX,     // ç»„åˆæŒ‰é”®æœ€å¤§ ID
 } button_id_t;
 
-
 // -----------------------------------------------------------------------------
-// 2. Çý¶¯ API ÉùÃ÷
+// 2. é©±åŠ¨ API å£°æ˜Ž
 // -----------------------------------------------------------------------------
 
 /**
- * @brief ebtn Çý¶¯³õÊ¼»¯º¯Êý¡£
- * Ö°Ôð£º³õÊ¼»¯ ebtn ¿â£¬ÅäÖÃ°´¼üÊý×éºÍ»Øµ÷¡£¸Ãº¯ÊýÔÚ system_assembly_init ÖÐµ÷ÓÃ¡£
+ * @brief ebtn é©±åŠ¨åˆå§‹åŒ–å‡½æ•°ã€‚
+ * èŒè´£ï¼šåˆå§‹åŒ– ebtn åº“ï¼Œé…ç½®æŒ‰é”®æ•°ç»„å’Œå›žè°ƒã€‚è¯¥å‡½æ•°åœ¨ system_assembly_init ä¸­è°ƒç”¨ã€‚
  */
-void ebtn_driver_init(void); 
+void ebtn_driver_init(void);
 
 /**
- * @brief ebtn ¿â´¦ÀíÈÎÎñ (ÖÜÆÚÐÔÈÎÎñ)¡£
- * Ö°Ôð£ºÓÉµ÷¶ÈÆ÷ÖÐÖÜÆÚÐÔÔËÐÐ (Èç 10ms)£¬Çý¶¯ ebtn ×´Ì¬»ú¡£
+ * @brief ebtn åº“å¤„ç†ä»»åŠ¡ (å‘¨æœŸæ€§ä»»åŠ¡)ã€‚
+ * èŒè´£ï¼šç”±è°ƒåº¦å™¨ä¸­å‘¨æœŸæ€§è¿è¡Œ (å¦‚ 10ms)ï¼Œé©±åŠ¨ ebtn çŠ¶æ€æœºã€‚
  */
 void ebtn_process_task(void);
 

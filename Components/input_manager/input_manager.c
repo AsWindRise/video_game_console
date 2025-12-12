@@ -1,293 +1,173 @@
 #include "input_manager.h"
-
-// =============================================================================
-// 用户输入抽象层实现
-// =============================================================================
-
-// -----------------------------------------------------------------------------
-// 1. 私有宏定义
-// -----------------------------------------------------------------------------
-
-/** 输入事件队列容量 */
-#define INPUT_EVENT_QUEUE_SIZE 16
-
-/** 重复触发延迟（首次长按后多久开始重复） */
-#define INPUT_REPEAT_DELAY_MS 400
-
-/** 重复触发间隔（重复触发的周期） */
-#define INPUT_REPEAT_INTERVAL_MS 100
+#include "event_queue.h"
+#include "ebtn_driver.h"
+#include "rocker.h"
 
 // -----------------------------------------------------------------------------
-// 2. 私有数据
+// 事件源ID分配规则
 // -----------------------------------------------------------------------------
-
-/** 游戏模式标志（游戏模式下SK按键生效） */
-static bool s_game_mode;
-
-/** 当前帧各动作的按下状态 */
-static bool s_current_state[INPUT_ACTION_MAX];
-
-/** 上一帧各动作的按下状态 */
-static bool s_previous_state[INPUT_ACTION_MAX];
-
-/** 输入事件队列 */
-static input_event_t s_event_queue[INPUT_EVENT_QUEUE_SIZE];
-static uint8_t s_queue_head;
-static uint8_t s_queue_tail;
-static uint8_t s_queue_count;
-
-/** 重复触发相关 */
-static uint32_t s_press_start_time[INPUT_ACTION_MAX];
-static uint32_t s_last_repeat_time[INPUT_ACTION_MAX];
-static bool s_repeat_started[INPUT_ACTION_MAX];
+// ebtn（按键）: 0 ~ (ROCKER_SOURCE_ID - 1)
+//   - 单键: BTN_SW1(0) ~ BTN_SK(4)
+//   - 组合键: BTN_COMBO_0(101) ~ BTN_COMBO_MAX
+// rocker（摇杆）: ROCKER_SOURCE_ID (0x0100 = 256)
+//
+// 判断方法: evt.source_id < ROCKER_SOURCE_ID 则为按键事件
 
 // -----------------------------------------------------------------------------
-// 3. 私有函数声明
+// 私有变量
 // -----------------------------------------------------------------------------
 
-static void push_event(input_action_t action, input_event_type_t type, uint8_t click_count);
-static input_action_t map_button_to_action(uint16_t btn_id);
-static input_action_t map_rocker_dir_to_action(rocker_direction_t dir);
-static void process_button_event(uint16_t source_id, uint8_t event_type, uint32_t data);
-static void process_rocker_event(uint8_t event_type, uint32_t data);
-static void update_repeat(void);
+// 按键状态数组
+static uint8_t btn_pressed[INPUT_BTN_MAX] = {0};       // 当前是否按下
+static uint8_t btn_just_pressed[INPUT_BTN_MAX] = {0};  // 刚刚按下标志
+static uint8_t btn_just_released[INPUT_BTN_MAX] = {0}; // 刚刚释放标志
+static uint8_t btn_double_click[INPUT_BTN_MAX] = {0};  // 双击标志
 
 // -----------------------------------------------------------------------------
-// 4. API 实现
-// -----------------------------------------------------------------------------
-
-void input_manager_init(void)
-{
-    // 默认菜单模式
-    s_game_mode = false;
-
-    // 清空状态
-    for (int i = 0; i < INPUT_ACTION_MAX; i++)
-    {
-        s_current_state[i] = false;
-        s_previous_state[i] = false;
-        s_press_start_time[i] = 0;
-        s_last_repeat_time[i] = 0;
-        s_repeat_started[i] = false;
-    }
-
-    // 清空事件队列
-    s_queue_head = 0;
-    s_queue_tail = 0;
-    s_queue_count = 0;
-}
-
-void input_manager_process(void)
-{
-    app_event_t raw_evt;
-
-    // 1. 保存上一帧状态
-    for (int i = 0; i < INPUT_ACTION_MAX; i++)
-    {
-        s_previous_state[i] = s_current_state[i];
-    }
-
-    // 2. 处理底层事件队列
-    while (event_queue_pop(&raw_evt))
-    {
-        if (raw_evt.source_id == ROCKER_SOURCE_ID)
-        {
-            process_rocker_event(raw_evt.event_type, raw_evt.data);
-        }
-        else
-        {
-            process_button_event(raw_evt.source_id, raw_evt.event_type, raw_evt.data);
-        }
-    }
-
-    // 3. 处理重复触发（方向键长按）
-    update_repeat();
-}
-
-void input_set_game_mode(bool enable)
-{
-    s_game_mode = enable;
-}
-
-bool input_is_game_mode(void)
-{
-    return s_game_mode;
-}
-
-bool input_is_pressed(input_action_t action)
-{
-    if (action >= INPUT_ACTION_MAX)
-        return false;
-    return s_current_state[action];
-}
-
-bool input_is_just_pressed(input_action_t action)
-{
-    if (action >= INPUT_ACTION_MAX)
-        return false;
-    return s_current_state[action] && !s_previous_state[action];
-}
-
-bool input_is_just_released(input_action_t action)
-{
-    if (action >= INPUT_ACTION_MAX)
-        return false;
-    return !s_current_state[action] && s_previous_state[action];
-}
-
-bool input_poll_event(input_event_t *evt_out)
-{
-    if (s_queue_count == 0)
-        return false;
-
-    *evt_out = s_event_queue[s_queue_head];
-    s_queue_head = (s_queue_head + 1) % INPUT_EVENT_QUEUE_SIZE;
-    s_queue_count--;
-
-    return true;
-}
-
-void input_clear_events(void)
-{
-    s_queue_head = 0;
-    s_queue_tail = 0;
-    s_queue_count = 0;
-}
-
-const char *input_get_action_name(input_action_t action)
-{
-    static const char *names[] = {
-        "NONE",
-        "UP",
-        "DOWN",
-        "LEFT",
-        "RIGHT",
-        "CONFIRM",
-        "CANCEL",
-        "MENU",
-        "BACK"};
-
-    if (action < INPUT_ACTION_MAX)
-        return names[action];
-    return "UNKNOWN";
-}
-
-// -----------------------------------------------------------------------------
-// 5. 私有函数实现
+// 私有函数
 // -----------------------------------------------------------------------------
 
 /**
- * @brief 推送事件到内部队列
+ * @brief 清除所有"刚刚"状态标志
+ * @note  每帧开始时调用，确保边缘触发只维持一帧
  */
-static void push_event(input_action_t action, input_event_type_t type, uint8_t click_count)
+static void clear_edge_flags(void)
 {
-    if (s_queue_count >= INPUT_EVENT_QUEUE_SIZE)
-        return;
-
-    input_event_t evt;
-    evt.action = action;
-    evt.type = type;
-    evt.click_count = click_count;
-
-    s_event_queue[s_queue_tail] = evt;
-    s_queue_tail = (s_queue_tail + 1) % INPUT_EVENT_QUEUE_SIZE;
-    s_queue_count++;
+    for (uint8_t i = 0; i < INPUT_BTN_MAX; i++)
+    {
+        btn_just_pressed[i] = 0;
+        btn_just_released[i] = 0;
+        btn_double_click[i] = 0;  // 清除双击标志
+    }
 }
 
 /**
- * @brief 按键ID映射到逻辑动作
- * 映射关系：
- *   SW1 → MENU (菜单)
- *   SW2 → CONFIRM (确定)
- *   SW3 → CANCEL (取消)
- *   SW4 → BACK (返回)
- *   SK  → CONFIRM (仅游戏模式)
+ * @brief 将硬件按键ID映射到input_button_t
+ * @param source_id: 来自event_queue的source_id（BTN_SW1等）
+ * @retval 映射后的input_button_t，失败返回INPUT_BTN_MAX
  */
-static input_action_t map_button_to_action(uint16_t btn_id)
+static input_button_t map_button_id(uint16_t source_id)
 {
-    switch (btn_id)
+    switch (source_id)
     {
     case BTN_SW1:
-        return INPUT_ACTION_MENU;
+        return INPUT_BTN_Y;
     case BTN_SW2:
-        return INPUT_ACTION_CONFIRM;
+        return INPUT_BTN_X;
     case BTN_SW3:
-        return INPUT_ACTION_CANCEL;
+        return INPUT_BTN_A;
     case BTN_SW4:
-        return INPUT_ACTION_BACK;
+        return INPUT_BTN_B;
     case BTN_SK:
-        // SK只在游戏模式下生效
-        return s_game_mode ? INPUT_ACTION_CONFIRM : INPUT_ACTION_NONE;
+        return INPUT_BTN_START;  // 摇杆中心按键
     default:
-        // 组合键暂不处理
-        return INPUT_ACTION_NONE;
+        return INPUT_BTN_MAX; // 无效ID
     }
 }
 
 /**
- * @brief 摇杆方向映射到逻辑动作
- * 对角线方向映射为主方向（UP/DOWN优先）
+ * @brief 将摇杆方向映射到input_button_t
+ * @param direction: 摇杆方向枚举
+ * @retval 映射后的input_button_t，中心位置返回INPUT_BTN_MAX
  */
-static input_action_t map_rocker_dir_to_action(rocker_direction_t dir)
+static input_button_t map_rocker_direction(rocker_direction_t direction)
 {
-    switch (dir)
+    switch (direction)
     {
     case ROCKER_DIR_UP:
-    case ROCKER_DIR_UP_LEFT:
-    case ROCKER_DIR_UP_RIGHT:
-        return INPUT_ACTION_UP;
+        return INPUT_BTN_UP;
     case ROCKER_DIR_DOWN:
-    case ROCKER_DIR_DOWN_LEFT:
-    case ROCKER_DIR_DOWN_RIGHT:
-        return INPUT_ACTION_DOWN;
+        return INPUT_BTN_DOWN;
     case ROCKER_DIR_LEFT:
-        return INPUT_ACTION_LEFT;
+        return INPUT_BTN_LEFT;
     case ROCKER_DIR_RIGHT:
-        return INPUT_ACTION_RIGHT;
+        return INPUT_BTN_RIGHT;
+
+    // 对角方向优先映射为主要方向（可根据游戏需求调整）
+    case ROCKER_DIR_UP_LEFT:
+        return INPUT_BTN_UP;
+    case ROCKER_DIR_UP_RIGHT:
+        return INPUT_BTN_UP;
+    case ROCKER_DIR_DOWN_LEFT:
+        return INPUT_BTN_DOWN;
+    case ROCKER_DIR_DOWN_RIGHT:
+        return INPUT_BTN_DOWN;
+
     default:
-        return INPUT_ACTION_NONE;
+        return INPUT_BTN_MAX; // 中心位置
     }
 }
 
 /**
  * @brief 处理按键事件
+ * @param btn: 按键枚举
+ * @param is_press: 1=按下, 0=释放
  */
-static void process_button_event(uint16_t source_id, uint8_t event_type, uint32_t data)
+static void handle_button_event(input_button_t btn, uint8_t is_press)
 {
-    input_action_t action = map_button_to_action(source_id);
-    if (action == INPUT_ACTION_NONE)
-        return;
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return; // 无效按键，忽略
+    }
 
-    ebtn_evt_t evt = (ebtn_evt_t)event_type;
+    if (is_press)
+    {
+        // 按下事件
+        if (!btn_pressed[btn]) // 之前未按下，这是新的按下
+        {
+            btn_pressed[btn] = 1;
+            btn_just_pressed[btn] = 1;
+        }
+    }
+    else
+    {
+        // 释放事件
+        if (btn_pressed[btn]) // 之前是按下的，这是新的释放
+        {
+            btn_pressed[btn] = 0;
+            btn_just_released[btn] = 1;
+        }
+    }
+}
 
-    switch (evt)
+/**
+ * @brief 处理ebtn按键事件
+ * @param evt: 事件结构体指针
+ */
+static void process_ebtn_event(app_event_t *evt)
+{
+    input_button_t btn = map_button_id(evt->source_id);
+
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return; // 无效按键
+    }
+
+    // 根据事件类型处理
+    switch (evt->event_type)
     {
     case EBTN_EVT_ONPRESS:
-        s_current_state[action] = true;
-        s_press_start_time[action] = HAL_GetTick();
-        s_repeat_started[action] = false;
-        push_event(action, INPUT_EVT_PRESS, 0);
+        handle_button_event(btn, 1);
         break;
 
     case EBTN_EVT_ONRELEASE:
-        s_current_state[action] = false;
-        push_event(action, INPUT_EVT_RELEASE, 0);
+        handle_button_event(btn, 0);
         break;
 
     case EBTN_EVT_ONCLICK:
-    {
-        // data字段低8位存放连击次数（由ebtn_driver传递）
-        uint8_t click_cnt = (uint8_t)(data & 0xFF);
-        if (click_cnt == 0)
-            click_cnt = 1; // 兼容旧版本
-        push_event(action, INPUT_EVT_CLICK, click_cnt);
+        // 处理单击/双击事件
+        // evt->data包含点击次数（来自ebtn的click_cnt字段）
+        {
+            uint16_t click_count = evt->data;  // 获取点击次数
+            if (click_count >= 2)
+            {
+                // 检测到双击
+                btn_double_click[btn] = 1;
+            }
+        }
         break;
-    }
 
-    case EBTN_EVT_KEEPALIVE:
-        // 长按保持事件，update_repeat会处理重复触发
-        break;
-
+    // KEEPALIVE事件不需要处理
     default:
         break;
     }
@@ -295,81 +175,193 @@ static void process_button_event(uint16_t source_id, uint8_t event_type, uint32_
 
 /**
  * @brief 处理摇杆事件
+ * @param evt: 事件结构体指针
  */
-static void process_rocker_event(uint8_t event_type, uint32_t data)
+static void process_rocker_event(app_event_t *evt)
 {
-    rocker_event_type_t evt = (rocker_event_type_t)event_type;
-    rocker_direction_t dir = ROCKER_EVT_UNPACK_DIR(data);
+    // 解包摇杆事件数据
+    rocker_direction_t dir = ROCKER_EVT_UNPACK_DIR(evt->data);
+    input_button_t btn = map_rocker_direction(dir);
 
-    input_action_t action = map_rocker_dir_to_action(dir);
-    if (action == INPUT_ACTION_NONE && evt != ROCKER_EVT_DIR_LEAVE)
-        return;
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return; // 中心位置，不处理
+    }
 
-    switch (evt)
+    // 根据事件类型处理
+    switch (evt->event_type)
     {
     case ROCKER_EVT_DIR_ENTER:
-        if (action != INPUT_ACTION_NONE)
-        {
-            s_current_state[action] = true;
-            s_press_start_time[action] = HAL_GetTick();
-            s_repeat_started[action] = false;
-            push_event(action, INPUT_EVT_PRESS, 0);
-        }
+        handle_button_event(btn, 1);
         break;
 
     case ROCKER_EVT_DIR_LEAVE:
-        action = map_rocker_dir_to_action(dir);
-        if (action != INPUT_ACTION_NONE)
-        {
-            s_current_state[action] = false;
-            push_event(action, INPUT_EVT_RELEASE, 0);
-        }
+        handle_button_event(btn, 0);
         break;
 
-    case ROCKER_EVT_DIR_HOLD:
-        // 摇杆保持，update_repeat会处理
-        break;
-
+    // HOLD事件不需要特殊处理，状态已经是按下
     default:
         break;
     }
 }
 
+// -----------------------------------------------------------------------------
+// 公共函数实现
+// -----------------------------------------------------------------------------
+
 /**
- * @brief 更新重复触发逻辑
- * 方向键长按时周期性触发REPEAT事件，用于菜单导航
+ * @brief 初始化输入管理器
  */
-static void update_repeat(void)
+void input_manager_init(void)
 {
-    uint32_t now = HAL_GetTick();
-
-    // 只对方向键做重复触发
-    for (input_action_t act = INPUT_ACTION_UP; act <= INPUT_ACTION_RIGHT; act++)
+    // 清空所有状态
+    for (uint8_t i = 0; i < INPUT_BTN_MAX; i++)
     {
-        if (!s_current_state[act])
-        {
-            s_repeat_started[act] = false;
-            continue;
-        }
-
-        uint32_t held_time = now - s_press_start_time[act];
-
-        if (!s_repeat_started[act])
-        {
-            if (held_time >= INPUT_REPEAT_DELAY_MS)
-            {
-                s_repeat_started[act] = true;
-                s_last_repeat_time[act] = now;
-                push_event(act, INPUT_EVT_REPEAT, 0);
-            }
-        }
-        else
-        {
-            if ((now - s_last_repeat_time[act]) >= INPUT_REPEAT_INTERVAL_MS)
-            {
-                s_last_repeat_time[act] = now;
-                push_event(act, INPUT_EVT_REPEAT, 0);
-            }
-        }
+        btn_pressed[i] = 0;
+        btn_just_pressed[i] = 0;
+        btn_just_released[i] = 0;
+        btn_double_click[i] = 0;
     }
+}
+
+/**
+ * @brief 清空输入管理器的所有状态
+ * @note  用于场景切换时清除残留的按键状态
+ */
+void input_manager_clear(void)
+{
+    // 清空所有状态（与init相同）
+    for (uint8_t i = 0; i < INPUT_BTN_MAX; i++)
+    {
+        btn_pressed[i] = 0;
+        btn_just_pressed[i] = 0;
+        btn_just_released[i] = 0;
+        btn_double_click[i] = 0;
+    }
+}
+
+/**
+ * @brief 输入管理器任务处理函数
+ */
+void input_manager_task(void)
+{
+    // 清除上一帧的边缘触发标志
+    clear_edge_flags();
+
+    // 处理事件队列中的所有事件
+    app_event_t evt;
+    while (event_queue_pop(&evt))
+    {
+        // 判断事件来源（根据ID范围区分）
+        if (evt.source_id < ROCKER_SOURCE_ID)
+        {
+            // 来自ebtn（按键）：ID < 256
+            process_ebtn_event(&evt);
+        }
+        else if (evt.source_id == ROCKER_SOURCE_ID)
+        {
+            // 来自rocker（摇杆）：ID = 256
+            process_rocker_event(&evt);
+        }
+        // 其他事件源忽略
+    }
+}
+
+/**
+ * @brief 查询按键是否正在被按下
+ */
+uint8_t input_is_pressed(input_button_t btn)
+{
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return 0;
+    }
+    return btn_pressed[btn];
+}
+
+/**
+ * @brief 查询按键是否刚刚按下
+ */
+uint8_t input_is_just_pressed(input_button_t btn)
+{
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return 0;
+    }
+    return btn_just_pressed[btn];
+}
+
+/**
+ * @brief 查询按键是否刚刚释放
+ */
+uint8_t input_is_just_released(input_button_t btn)
+{
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return 0;
+    }
+    return btn_just_released[btn];
+}
+
+/**
+ * @brief 获取按键的完整状态
+ */
+input_state_t input_get_state(input_button_t btn)
+{
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return INPUT_STATE_IDLE;
+    }
+
+    if (btn_just_pressed[btn])
+    {
+        return INPUT_STATE_JUST_PRESSED;
+    }
+    else if (btn_just_released[btn])
+    {
+        return INPUT_STATE_JUST_RELEASED;
+    }
+    else if (btn_pressed[btn])
+    {
+        return INPUT_STATE_PRESSED;
+    }
+    else
+    {
+        return INPUT_STATE_IDLE;
+    }
+}
+
+/**
+ * @brief 获取任意方向键是否按下
+ */
+uint8_t input_any_direction_pressed(void)
+{
+    return btn_pressed[INPUT_BTN_UP] ||
+           btn_pressed[INPUT_BTN_DOWN] ||
+           btn_pressed[INPUT_BTN_LEFT] ||
+           btn_pressed[INPUT_BTN_RIGHT];
+}
+
+/**
+ * @brief 获取任意功能键是否按下
+ */
+uint8_t input_any_button_pressed(void)
+{
+    return btn_pressed[INPUT_BTN_A] ||
+           btn_pressed[INPUT_BTN_B] ||
+           btn_pressed[INPUT_BTN_X] ||
+           btn_pressed[INPUT_BTN_Y] ||
+           btn_pressed[INPUT_BTN_START];
+}
+
+/**
+ * @brief 查询按键是否双击
+ */
+uint8_t input_is_double_click(input_button_t btn)
+{
+    if (btn >= INPUT_BTN_MAX)
+    {
+        return 0;
+    }
+    return btn_double_click[btn];
 }

@@ -20,7 +20,11 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
+#include "rng.h"
+#include "sdio.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -97,6 +101,10 @@ int main(void)
   MX_ADC2_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_RNG_Init();
+  MX_SPI1_Init();
+  MX_SDIO_SD_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 	// 1. 系统装配初始化：调用驱动、组件、事件队列等的初始化函数
   system_assembly_init();
@@ -141,7 +149,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();

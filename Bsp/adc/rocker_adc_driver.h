@@ -50,3 +50,10 @@ rocker_data_t rocker_adc_get_raw_value(void);
 
 
 #endif // __ROCKER_ADC_DRIVER_H__
+
+/**
+ * @brief 摇杆处理任务（定期调用）
+ * @note  建议10ms周期调用
+ */
+void rocker_process_task(void);
+

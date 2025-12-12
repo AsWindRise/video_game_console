@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(rm:*)",
+      "Bash(python:*)",
+      "Bash(touch:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(python3:*)",
+      "Bash(cd /mnt/d/stm32Project/video_game_console/02demo/console && find:*)",
+      "WebFetch(domain:wiki.lckfb.com)",
+      "Bash(proxy_on)",
+      "Bash(export http_proxy=\"http://127.0.0.1:7897\")",
+      "Bash(export https_proxy=\"http://127.0.0.1:7897\")",
+      "Bash(export all_proxy=\"socks5://127.0.0.1:7897\")",
+      "Bash(curl:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

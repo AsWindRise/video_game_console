@@ -63,6 +63,10 @@ void Error_Handler(void);
 #define SW4_GPIO_Port GPIOE
 #define SK_Pin GPIO_PIN_4
 #define SK_GPIO_Port GPIOE
+#define SPI1_CS_Pin GPIO_PIN_4
+#define SPI1_CS_GPIO_Port GPIOA
+#define Detect_SDIO_Pin GPIO_PIN_3
+#define Detect_SDIO_GPIO_Port GPIOD
 #define SW1_Pin GPIO_PIN_0
 #define SW1_GPIO_Port GPIOE
 #define SW2_Pin GPIO_PIN_1

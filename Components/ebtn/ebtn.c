@@ -6,7 +6,7 @@
 
 // 定义按钮类型标志 (用于 prv_process_btn)
 #define EBTN_TYPE_NORMAL 0
-#define EBTN_TYPE_COMBO  1
+#define EBTN_TYPE_COMBO 1
 
 /* 默认按钮组实例 */
 static ebtn_t ebtn_default;
@@ -100,7 +100,7 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (btn_type == EBTN_TYPE_NORMAL && ebtobj->combo_suppress_threshold > 0 &&
                         ebtn_timer_sub(mstime, ebtobj->last_combo_event_time) < ebtobj->combo_suppress_threshold)
                     {
-                        ebtn_btn_combo_t* last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
+                        ebtn_btn_combo_t *last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
                         if (last_combo != NULL && btn_idx >= 0 && bit_array_get(last_combo->comb_key, btn_idx))
                         {
                             suppress_click = 1;
@@ -110,7 +110,8 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (!suppress_click && (btn->event_mask & EBTN_EVT_MASK_ONCLICK))
                     {
                         // << 修改点: 如果是组合键单击，记录时间和ID >>
-                        if (btn_type == EBTN_TYPE_COMBO) {
+                        if (btn_type == EBTN_TYPE_COMBO)
+                        {
                             ebtobj->last_combo_event_id = btn->key_id;
                             ebtobj->last_combo_event_time = mstime;
                         }
@@ -160,7 +161,7 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                 if (btn_type == EBTN_TYPE_NORMAL && ebtobj->combo_suppress_threshold > 0 &&
                     ebtn_timer_sub(mstime, ebtobj->last_combo_event_time) < ebtobj->combo_suppress_threshold)
                 {
-                    ebtn_btn_combo_t* last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
+                    ebtn_btn_combo_t *last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
                     if (last_combo != NULL && btn_idx >= 0 && bit_array_get(last_combo->comb_key, btn_idx))
                     {
                         suppress_click = 1;
@@ -170,7 +171,8 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                 if (!suppress_click && (btn->event_mask & EBTN_EVT_MASK_ONCLICK))
                 {
                     // << 修改点: 如果是组合键单击，记录时间和ID >>
-                    if (btn_type == EBTN_TYPE_COMBO) {
+                    if (btn_type == EBTN_TYPE_COMBO)
+                    {
                         ebtobj->last_combo_event_id = btn->key_id;
                         ebtobj->last_combo_event_time = mstime;
                     }
@@ -223,7 +225,7 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                         if (btn_type == EBTN_TYPE_NORMAL && ebtobj->combo_suppress_threshold > 0 &&
                             ebtn_timer_sub(mstime, ebtobj->last_combo_event_time) < ebtobj->combo_suppress_threshold)
                         {
-                            ebtn_btn_combo_t* last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
+                            ebtn_btn_combo_t *last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
                             if (last_combo != NULL && btn_idx >= 0 && bit_array_get(last_combo->comb_key, btn_idx))
                             {
                                 suppress_click = 1;
@@ -233,7 +235,8 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                         if (!suppress_click && (btn->event_mask & EBTN_EVT_MASK_ONCLICK))
                         {
                             // << 修改点: 如果是组合键单击，记录时间和ID >>
-                            if (btn_type == EBTN_TYPE_COMBO) {
+                            if (btn_type == EBTN_TYPE_COMBO)
+                            {
                                 ebtobj->last_combo_event_id = btn->key_id;
                                 ebtobj->last_combo_event_time = mstime;
                             }
@@ -258,7 +261,7 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (btn_type == EBTN_TYPE_NORMAL && ebtobj->combo_suppress_threshold > 0 &&
                         ebtn_timer_sub(mstime, ebtobj->last_combo_event_time) < ebtobj->combo_suppress_threshold)
                     {
-                        ebtn_btn_combo_t* last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
+                        ebtn_btn_combo_t *last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
                         if (last_combo != NULL && btn_idx >= 0 && bit_array_get(last_combo->comb_key, btn_idx))
                         {
                             suppress_click = 1;
@@ -268,7 +271,8 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (!suppress_click && (btn->event_mask & EBTN_EVT_MASK_ONCLICK))
                     {
                         // << 修改点: 如果是组合键单击，记录时间和ID >>
-                        if (btn_type == EBTN_TYPE_COMBO) {
+                        if (btn_type == EBTN_TYPE_COMBO)
+                        {
                             ebtobj->last_combo_event_id = btn->key_id;
                             ebtobj->last_combo_event_time = mstime;
                         }
@@ -298,7 +302,7 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (btn_type == EBTN_TYPE_NORMAL && ebtobj->combo_suppress_threshold > 0 &&
                         ebtn_timer_sub(mstime, ebtobj->last_combo_event_time) < ebtobj->combo_suppress_threshold)
                     {
-                        ebtn_btn_combo_t* last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
+                        ebtn_btn_combo_t *last_combo = prv_get_combo_btn_by_key_id(ebtobj->last_combo_event_id);
                         if (last_combo != NULL && btn_idx >= 0 && bit_array_get(last_combo->comb_key, btn_idx))
                         {
                             suppress_click = 1;
@@ -308,7 +312,8 @@ static void prv_process_btn(ebtn_btn_t *btn, uint8_t old_state, uint8_t new_stat
                     if (!suppress_click && (btn->event_mask & EBTN_EVT_MASK_ONCLICK))
                     {
                         // << 修改点: 如果是组合键单击，记录时间和ID >>
-                        if (btn_type == EBTN_TYPE_COMBO) {
+                        if (btn_type == EBTN_TYPE_COMBO)
+                        {
                             ebtobj->last_combo_event_id = btn->key_id;
                             ebtobj->last_combo_event_time = mstime;
                         }
@@ -910,4 +915,3 @@ void ebtn_set_combo_suppress_threshold(ebtn_time_t threshold)
     ebtn_t *ebtobj = &ebtn_default;
     ebtobj->combo_suppress_threshold = threshold;
 }
-
